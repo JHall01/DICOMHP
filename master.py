@@ -19,7 +19,6 @@ class MainApplication(tk.Frame):
         parent.title("3DQI DICOM Editor")
         self.headFrame = tk.Frame(parent)
         self.headFrame.grid(row=1)
-
         self.centFrame = tk.Frame(parent, width=800, height=450)
         self.centFrame.grid(row=2, sticky="ew")
         self.header = tk.Label(self.headFrame, text="3DQI DICOM tagger", font=("Helvetica", 24), padx=100)
@@ -39,22 +38,26 @@ class MainApplication(tk.Frame):
             self.allParams.insert(index, param)
 
         self.allParams.grid(row=2, column=1, padx=10)
+        self.paramButton = tk.Button(self.centFrame, text = ">", command = self.moveParams ,padx= 5)
+        self.paramButton.grid(row = 2, column = 2, padx = 5)
         self.wantedPLabal = tk.Label(self.centFrame, text="Copy desired DICOM Values from left box to the box below")
-        self.wantedPLabal.grid(row=1, column = 2)
-        self.wantedParams = tk.Text(self.centFrame, height = 20)
-        self.wantedParams.grid(row=2, column=2, sticky = "n")
+        self.wantedPLabal.grid(row=1, column = 3)
+        self.wantedParams = tk.Text(self.centFrame, height = 20, width = 70)
+        self.wantedParams.grid(row=2, column=3, sticky = "n")
         self.findDCM = tk.Button(self.centFrame, text="Search", command=self.begin, state="disabled", padx = 100)
-        self.findDCM.grid(column=2, row=3, pady = 10, sticky = "w")
+        self.findDCM.grid(column=3, row=3, pady = 10, sticky = "w")
         self.openFile = tk.Button(self.centFrame, text="ViewFile", command = self.openResult, state = "disabled", padx = 100)
-        self.openFile.grid(column = 2, row = 3, pady = 10, sticky = "e")
+        self.openFile.grid(column = 3, row = 3, pady = 10, sticky = "e")
 
         self.statusLabel = tk.Label(self.centFrame, text="Status: Enter Texture File From 3DQI")
-        self.statusLabel.grid(column = 2, row = 4)
+        self.statusLabel.grid(column = 3, row = 4)
 
+    def moveParams(self):
+        values = [self.allParams.get(idx) for idx in self.allParams.curselection()]
+        for value in values:
+            self.wantedParams.insert('1.0', str(value) + '\n')
 
     def browse_button(self):
-        # Allow user to select a directory and store it in global var
-        # called folder_path
         global rootdir
         rootdir = filedialog.askdirectory()
         self.statusLabel['text'] = "Status: Enter desired headers into box above and start search..."

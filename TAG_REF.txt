@@ -1,7 +1,10 @@
 Patient_ID ,     :0010,0020
-Patient_Age ,    :0010,1010
+Patient_Age ,    :0010,1010 - 1
 Patient_Sex ,     :0010,0040
 Scanner_Manufacturer ,        :0008,0070
 Slice_Thickness ,     :0018,0050
 kernel ,      :0018,1210
 Pitch ,          :0018,9311
+FOV  ,          :0018,7036
+Current,        :0018,1151
+Exposure Time ,   :0018,1150
