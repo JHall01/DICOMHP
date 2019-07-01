@@ -75,8 +75,10 @@ class MainApplication(tk.Frame):
         RFfile = pd.read_csv(RFname)
         params = self.wantedParams.get(1.0, "end-1c")
         params = params.split()
+
         IDs = RFfile["Patient_id"].astype(str).values.tolist()
         tags, tagSt = self.getTagVals(params)
+        print(tagSt)
         tagList = self.retrieveDCMH(rootDir=rootdir, IDs=IDs, tags=tags, tagSt=tagSt)
         retFrame = self.matchData(RFfile=RFfile, tagList=tagList, headVals=tagSt)
         filename = rootdir + r"\outDCMHfile.csv"
@@ -92,8 +94,8 @@ class MainApplication(tk.Frame):
         for subdir, dirs, files in os.walk(rootDir):
             for file in files:
                 curFile = os.path.join(subdir, file)
-                print(curFile)
                 if ".dcm" in curFile:
+                    print(curFile)
                     filt = dcmDMP + IDtag +'"' + curFile + '"'
                     process = subprocess.Popen(filt, shell=True, stdout=subprocess.PIPE)
                     IDval, err = process.communicate()
@@ -101,18 +103,28 @@ class MainApplication(tk.Frame):
                     try:
                         IDval = IDval[str.index(IDval, "[")+1: str.index(IDval, "]")]
                     except:
-                        print(IDval + "didnt work!")
+                        print(IDval + "ID values not found !")
                         self.statusLabel['text'] = "Status: ID values not found " + str(err)
                     if IDval in IDleft:
+
                         IDleft.remove(IDval)
                         for tag in tags:
+                            concatLen = None
                             index = tags.index(tag)
                             curParam = tagSt[index]
                             tag = tag.strip()
+                            if '-' in tag:
+                                concatLen = tag[str.index(tag, '-'):]
+                                tag = tag[:str.index(tag, '-')]
                             arg = dcmDMP + " " + tag + " " + '"' + curFile + '"'
                             process = subprocess.Popen(arg, shell=True, stdout=subprocess.PIPE)
                             value, err = process.communicate()
-                            retList.append(IDval + "," + curParam + "*" + value.decode("utf-8"))
+                            print(value)
+                            if concatLen is not None:
+                                retList.append(IDval + "," + curParam + "*" + value.decode("utf-8") + concatLen)
+                            else:
+                                retList.append(IDval + "," + curParam + "*" + value.decode("utf-8"))
+                    break
 
         return retList
 
@@ -128,32 +140,56 @@ class MainApplication(tk.Frame):
         return param
 
     def getTagVals(self, params):
+        fileList = []
         code = []
         ourParams = []
         tag = open("TAG_REF.txt", "r")
         for line in tag:
             line = str(line)
-            for param in params:
-                if param in line:
-                    codeVal = line[str.index(line, ":")+1: ]
-                    code.append(" +P " + codeVal + " ")
-                    ourParams.append(line[:str.index(line, ",")])
+            line = line.strip()
+            fileList.append(line)
+
+
+        for param in params:
+            if param == "Effective_Dose":
+                ourParams.append("Effective_Dose")
+                if "Exposure_Time" not in ourParams:
+                    ourParams.append("Exposure_Time")
+                    code.append(" +P 0018,1150 ")
+                if "Current" not in ourParams:
+                    ourParams.append("Current")
+                    code.append(" +P 0018,1151 ")
+            else:
+                for s in fileList:
+                    if param in s:
+                        if param not in ourParams:
+                            codeVal = s[str.index(s, ":") + 1:]
+                            code.append(" +P " + codeVal + " ")
+                            ourParams.append(s[:str.index(s, ",")])
         tag.close()
         return code, ourParams
 
 
     def matchData(self, RFfile, headVals, tagList):
+
         for val in headVals:
             RFfile.insert(loc = 6, column=val, value = "")
+            if "Effective_Dose" in val:
+                EffCheck = True
 
         for tag in tagList :
-            print(tag)
             tag = str(tag)
+            print(tag)
             if "[" not in tag:
                 ourVal = tag[str.index(tag, "D") + 1:str.index(tag, "#")]
                 ourVal = ourVal.strip()
             else:
                 ourVal = tag[str.index(tag, "[")+1:str.index(tag, "]")]
+                ourVal = ourVal.strip()
+            if '-' in tag:
+                concatLen = tag[str.index(tag, "-")+1:]
+                concatLen = int(concatLen)
+                ourVal = ourVal[:-concatLen]
 
             ID = tag[:str.index(tag, ",")]
             ourRow = RFfile.index[RFfile['Patient_id'] == int(ID)]
@@ -161,6 +197,25 @@ class MainApplication(tk.Frame):
             RFfile.at[ourRow, ourCol] = ourVal
 
         return RFfile
+
+    def checkDose(self, RFfile, headVals):
+        for headVal in headVals:
+
+            if "Effective_Dose" in headVal:
+                for ID in RFfile["Patient_id"]:
+                    ID = str(ID)
+                    print(ID)
+                    ourRow = RFfile.index[RFfile['Patient_id'] == int(ID)]
+                    ourRow = int(ourRow[0])
+                    print(ourRow)
+                    current = RFfile.loc[RFfile.index(ourRow), "Current"]
+                    print(current)
+                    exposure = RFfile.loc[RFfile.index(ourRow), "Exposure_Time"]
+                    print(exposure)
+                    ourVa = float(current) * float(exposure)
+
+                    RFfile.at[ourRow, "Effective_Dose"] = ourVa
+
     def openResult(self):
         print(filename)
         os.startfile(filename)
